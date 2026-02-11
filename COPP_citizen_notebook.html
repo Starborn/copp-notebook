@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COPP v1.0 — Citizen Orb Photometry Pipeline</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #050510;
+  --surface: #0a0a1a;
+  --surface2: #111128;
+  --border: #1a1a3a;
+  --accent: #00ccff;
+  --accent2: #ff6b6b;
+  --accent3: #44ff88;
+  --text: #e0e0f0;
+  --text2: #8888aa;
+  --gold: #ffcc00;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Animated background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: 
+    radial-gradient(ellipse at 20% 50%, rgba(0,204,255,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(255,107,107,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(68,255,136,0.02) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* HEADER */
+header {
+  text-align: center;
+  padding: 40px 0 30px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 30px;
+}
+
+header h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.4em;
+  font-weight: 300;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+header .version {
+  font-size: 0.7em;
+  color: var(--text2);
+  letter-spacing: 3px;
+}
+
+header p.subtitle {
+  font-family: 'Crimson Pro', serif;
+  font-style: italic;
+  font-size: 1.05em;
+  color: var(--text2);
+  margin-top: 12px;
+  font-weight: 300;
+}
+
+/* STEPS */
+.step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 28px;
+  margin-bottom: 20px;
+  transition: border-color 0.3s;
+}
+
+.step:hover { border-color: var(--accent); }
+
+.step.active { border-color: var(--accent); box-shadow: 0 0 20px rgba(0,204,255,0.05); }
+.step.complete { border-color: var(--accent3); }
+.step.complete .step-number { background: var(--accent3); color: var(--bg); }
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.step-title {
+  font-size: 0.95em;
+  font-weight: 500;
+  letter-spacing: 1px;
+}
+
+.step-desc {
+  font-size: 0.78em;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 16px;
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.95em;
+}
+
+/* UPLOAD ZONE */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.upload-zone:hover {
+  border-color: var(--accent);
+  background: rgba(0,204,255,0.02);
+}
+
+.upload-zone.dragover {
+  border-color: var(--accent);
+  background: rgba(0,204,255,0.05);
+}
+
+.upload-zone .icon {
+  font-size: 2em;
+  margin-bottom: 10px;
+}
+
+.upload-zone p {
+  font-size: 0.8em;
+  color: var(--text2);
+}
+
+.upload-zone .limits {
+  font-size: 0.7em;
+  color: var(--text2);
+  margin-top: 8px;
+  opacity: 0.6;
+}
+
+.upload-zone input[type="file"] {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-info {
+  display: none;
+  background: var(--surface2);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-top: 12px;
+  font-size: 0.78em;
+  color: var(--accent3);
+}
+
+/* FORM FIELDS */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group.full { grid-column: 1 / -1; }
+
+.form-group label {
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text2);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82em;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--accent);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* BUTTONS */
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8em;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 14px 28px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  background: transparent;
+  color: var(--accent);
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.btn.primary:hover {
+  background: transparent;
+  color: var(--accent);
+}
+
+/* PROGRESS */
+.progress-container {
+  display: none;
+  margin-top: 16px;
+}
+
+.progress-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent3));
+  width: 0%;
+  transition: width 0.3s;
+  border-radius: 2px;
+}
+
+.progress-text {
+  font-size: 0.7em;
+  color: var(--text2);
+}
+
+/* RESULTS */
+#results-section {
+  display: none;
+}
+
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.result-card h3 {
+  font-size: 0.85em;
+  font-weight: 500;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+  color: var(--accent);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.metric {
+  background: var(--surface2);
+  border-radius: 4px;
+  padding: 14px;
+}
+
+.metric .label {
+  font-size: 0.65em;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+
+.metric .value {
+  font-size: 1.3em;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.metric .unit {
+  font-size: 0.6em;
+  color: var(--text2);
+  margin-left: 4px;
+}
+
+.metric.highlight .value { color: var(--accent); }
+.metric.warn .value { color: var(--accent2); }
+.metric.good .value { color: var(--accent3); }
+
+/* CANVAS/CHARTS */
+canvas.chart {
+  width: 100%;
+  height: 200px;
+  background: var(--surface2);
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+/* AUDIO PLAYER */
+.audio-player {
+  background: var(--surface2);
+  border-radius: 6px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.audio-player .play-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2em;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.audio-player .play-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.audio-player .info {
+  flex: 1;
+}
+
+.audio-player .info .title {
+  font-size: 0.78em;
+  font-weight: 500;
+}
+
+.audio-player .info .desc {
+  font-size: 0.68em;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+/* REPORT DOWNLOAD */
+.download-section {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+/* DASHBOARD IMAGE */
+.dashboard-container {
+  margin-top: 12px;
+}
+
+.dashboard-container canvas {
+  width: 100%;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+/* FOOTER */
+footer {
+  text-align: center;
+  padding: 30px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+}
+
+footer p {
+  font-size: 0.7em;
+  color: var(--text2);
+  font-family: 'Crimson Pro', serif;
+  font-style: italic;
+}
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  header h1 { font-size: 1em; letter-spacing: 3px; }
+}
+
+/* LOADING SPINNER */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Status log */
+.log {
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 0.72em;
+  line-height: 1.8;
+  color: var(--text2);
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--surface2);
+  border-radius: 4px;
+}
+
+.log .entry { }
+.log .entry.ok { color: var(--accent3); }
+.log .entry.info { color: var(--accent); }
+.log .entry.warn { color: var(--gold); }
+.log .entry.err { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>COPP</h1>
+  <div class="version">Citizen Orb Photometry Pipeline v1.0</div>
+  <p class="subtitle">Standardized computational analysis of anomalous luminous phenomena from consumer video</p>
+</header>
+
+<!-- STEP 1: Upload -->
+<div class="step active" id="step1">
+  <div class="step-header">
+    <div class="step-number">1</div>
+    <div class="step-title">Upload Video Capture</div>
+  </div>
+  <div class="step-desc">
+    Upload a video recording of a luminous phenomenon. The pipeline accepts MP4, MOV, WebM, or AVI files. 
+    For best results, use unedited footage without digital zoom. Moderate-distance captures 
+    where the source is not saturating the sensor provide the most analytically valuable data.
+  </div>
+  <div class="upload-zone" id="upload-zone">
+    <div class="icon">&#9678;</div>
+    <p>Drop video file here or click to browse</p>
+    <div class="limits">MP4 / MOV / WebM / AVI &bull; Max 500 MB &bull; Min 1 second &bull; Max 10 minutes</div>
+    <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/webm,video/avi,video/x-msvideo,.mp4,.mov,.webm,.avi">
+  </div>
+  <div class="file-info" id="file-info"></div>
+</div>
+
+<!-- STEP 2: Metadata -->
+<div class="step" id="step2">
+  <div class="step-header">
+    <div class="step-number">2</div>
+    <div class="step-title">Observation Metadata</div>
+  </div>
+  <div class="step-desc">
+    Provide context about the observation. This metadata is essential for scientific comparison across cases.
+    Fields marked with * are required.
+  </div>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Observer Name *</label>
+      <input type="text" id="meta-name" placeholder="Your name">
+    </div>
+    <div class="form-group">
+      <label>Email (optional)</label>
+      <input type="email" id="meta-email" placeholder="For report delivery">
+    </div>
+    <div class="form-group">
+      <label>Observation Date *</label>
+      <input type="date" id="meta-date">
+    </div>
+    <div class="form-group">
+      <label>Observation Time (local)</label>
+      <input type="time" id="meta-time">
+    </div>
+    <div class="form-group">
+      <label>Location Description *</label>
+      <input type="text" id="meta-location" placeholder="e.g. Coastal Taiwan, facing west">
+    </div>
+    <div class="form-group">
+      <label>Country *</label>
+      <input type="text" id="meta-country" placeholder="e.g. Taiwan">
+    </div>
+    <div class="form-group">
+      <label>Latitude (if known)</label>
+      <input type="number" step="0.0001" id="meta-lat" placeholder="e.g. 25.0330">
+    </div>
+    <div class="form-group">
+      <label>Longitude (if known)</label>
+      <input type="number" step="0.0001" id="meta-lon" placeholder="e.g. 121.5654">
+    </div>
+    <div class="form-group">
+      <label>Camera Device</label>
+      <input type="text" id="meta-device" placeholder="e.g. iPhone 13, Samsung S21">
+    </div>
+    <div class="form-group">
+      <label>Estimated Distance to Source</label>
+      <select id="meta-distance">
+        <option value="">-- Select --</option>
+        <option value="<50m">Less than 50 meters</option>
+        <option value="50-200m">50 - 200 meters</option>
+        <option value="200m-1km">200 meters - 1 km</option>
+        <option value="1-5km">1 - 5 km</option>
+        <option value=">5km">More than 5 km</option>
+        <option value="unknown">Unknown</option>
+      </select>
+    </div>
+    <div class="form-group full">
+      <label>Observation Notes</label>
+      <textarea id="meta-notes" placeholder="Any additional details: weather, duration, behavior observed, other witnesses..."></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3: Analysis -->
+<div class="step" id="step3">
+  <div class="step-header">
+    <div class="step-number">3</div>
+    <div class="step-title">Run COPP Analysis</div>
+  </div>
+  <div class="step-desc">
+    The pipeline will extract frames, detect the luminous source, measure photometric parameters 
+    per frame, analyze temporal structure, and generate standardized dashboards. 
+    Processing time depends on video length (typically 10-60 seconds).
+  </div>
+  <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+    <button class="btn primary" id="run-btn" disabled onclick="runAnalysis()">
+      Run COPP Pipeline
+    </button>
+    <label style="font-size:0.75em; color:var(--text2); display:flex; align-items:center; gap:6px;">
+      <input type="checkbox" id="sonify-check" checked> Include sonification
+    </label>
+  </div>
+  <div class="progress-container" id="progress">
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="progress-text" id="progress-text">Initializing...</div>
+  </div>
+  <div class="log" id="log" style="display:none;"></div>
+</div>
+
+<!-- STEP 4: Results -->
+<div id="results-section">
+
+  <div class="step complete" id="step4">
+    <div class="step-header">
+      <div class="step-number">4</div>
+      <div class="step-title">Photometric Report</div>
+    </div>
+
+    <!-- Summary metrics -->
+    <div class="metrics-grid" id="metrics-grid"></div>
+
+    <!-- Intensity time series chart -->
+    <div class="result-card">
+      <h3>Intensity Time Series</h3>
+      <canvas class="chart" id="chart-intensity"></canvas>
+    </div>
+
+    <!-- Spectral channels chart -->
+    <div class="result-card">
+      <h3>Spectral Channel Decomposition (RGB)</h3>
+      <canvas class="chart" id="chart-spectral"></canvas>
+    </div>
+
+    <!-- Size time series -->
+    <div class="result-card">
+      <h3>Apparent Size Over Time</h3>
+      <canvas class="chart" id="chart-size"></canvas>
+    </div>
+
+    <!-- Signal structure -->
+    <div class="result-card">
+      <h3>Signal Structure Analysis</h3>
+      <div class="metrics-grid" id="signal-metrics"></div>
+    </div>
+
+    <!-- Sonification -->
+    <div class="result-card" id="sonification-card" style="display:none;">
+      <h3>Sonification</h3>
+      <p style="font-size:0.78em; color:var(--text2); margin-bottom:12px; font-family:'Crimson Pro',serif;">
+        The orb's photometric data mapped to sound: brightness controls pitch (pentatonic scale), 
+        apparent size controls volume, and blue excess controls harmonic richness.
+      </p>
+      <div class="audio-player">
+        <button class="play-btn" id="play-btn" onclick="toggleAudio()">&#9654;</button>
+        <div class="info">
+          <div class="title">Orb Sonification — <span id="audio-duration">0</span>s</div>
+          <div class="desc">Intensity→pitch &bull; Size→volume &bull; Blue excess→harmonics</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Classification -->
+    <div class="result-card">
+      <h3>Preliminary Classification</h3>
+      <div id="classification-text" style="font-size:0.82em; line-height:1.7; font-family:'Crimson Pro',serif;"></div>
+    </div>
+
+    <!-- Download / Export -->
+    <div class="result-card">
+      <h3>Export</h3>
+      <div class="download-section">
+        <button class="btn" onclick="downloadCSV()">Download CSV Data</button>
+        <button class="btn" onclick="downloadReport()">Download Report (JSON)</button>
+        <button class="btn" id="dl-audio-btn" style="display:none;" onclick="downloadAudio()">Download Sonification (WAV)</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>COPP v1.0 — Citizen Orb Photometry Pipeline — Di Maio & Epistemic Systems Lab, Ronin Institute</p>
+  <p style="margin-top:6px;">Method published in Limina: The Journal of UAP Studies. Code and data released under CC BY 4.0.</p>
+</footer>
+
+</div>
+
+<script>
+// =====================================================
+// COPP v1.0 — Browser Implementation
+// =====================================================
+
+let videoFile = null;
+let analysisResults = null;
+let audioContext = null;
+let audioBuffer = null;
+let audioSource = null;
+let isPlaying = false;
+
+// --- FILE UPLOAD ---
+const uploadZone = document.getElementById('upload-zone');
+const videoInput = document.getElementById('video-input');
+const fileInfo = document.getElementById('file-info');
+
+uploadZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  uploadZone.classList.add('dragover');
+});
+
+uploadZone.addEventListener('dragleave', () => {
+  uploadZone.classList.remove('dragover');
+});
+
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+
+videoInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  const maxSize = 500 * 1024 * 1024; // 500MB
+  const validTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/avi', 'video/x-msvideo'];
+
+  if (file.size > maxSize) {
+    alert('File too large. Maximum size is 500 MB.');
+    return;
+  }
+
+  videoFile = file;
+  const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+  fileInfo.style.display = 'block';
+  fileInfo.innerHTML = `&#10003; <strong>${file.name}</strong> (${sizeMB} MB, ${file.type || 'video'})`;
+
+  document.getElementById('step1').classList.add('complete');
+  document.getElementById('step2').classList.add('active');
+  document.getElementById('run-btn').disabled = false;
+}
+
+// --- ANALYSIS ENGINE ---
+function log(msg, type = '') {
+  const logEl = document.getElementById('log');
+  logEl.style.display = 'block';
+  const entry = document.createElement('div');
+  entry.className = 'entry ' + type;
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logEl.appendChild(entry);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setProgress(pct, text) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = text;
+}
+
+async function runAnalysis() {
+  if (!videoFile) return;
+
+  // Validate required metadata
+  const name = document.getElementById('meta-name').value.trim();
+  const date = document.getElementById('meta-date').value;
+  const location = document.getElementById('meta-location').value.trim();
+  const country = document.getElementById('meta-country').value.trim();
+
+  if (!name || !date || !location || !country) {
+    alert('Please fill in all required fields: Observer Name, Date, Location, and Country.');
+    return;
+  }
+
+  document.getElementById('step2').classList.add('complete');
+  document.getElementById('step3').classList.add('active');
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('progress').style.display = 'block';
+
+  const doSonify = document.getElementById('sonify-check').checked;
+
+  try {
+    setProgress(5, 'Loading video...');
+    log('Loading video file into memory...', 'info');
+
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+
+    const url = URL.createObjectURL(videoFile);
+    video.src = url;
+
+    await new Promise((resolve, reject) => {
+      video.onloadedmetadata = resolve;
+      video.onerror = () => reject(new Error('Could not load video'));
+    });
+
+    const duration = video.duration;
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+
+    if (duration > 600) {
+      log('Video exceeds 10 minute limit. Analyzing first 10 minutes.', 'warn');
+    }
+
+    log(`Video loaded: ${width}x${height}, ${duration.toFixed(1)}s`, 'ok');
+    setProgress(10, 'Extracting frames...');
+
+    // Step 1: Frame extraction
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    canvas.width = width;
+    canvas.height = height;
+
+    const fps = 10; // sample at 10fps for browser performance
+    const maxDuration = Math.min(duration, 600);
+    const totalFrames = Math.floor(maxDuration * fps);
+    const frameInterval = 1.0 / fps;
+
+    log(`Extracting ${totalFrames} frames at ${fps} fps...`, 'info');
+
+    const frames = [];
+    for (let i = 0; i < totalFrames; i++) {
+      const time = i * frameInterval;
+      video.currentTime = time;
+      await new Promise(resolve => {
+        video.onseeked = resolve;
+      });
+      ctx.drawImage(video, 0, 0);
+      const imageData = ctx.getImageData(0, 0, width, height);
+      frames.push({ time, imageData });
+
+      if (i % 20 === 0) {
+        const pct = 10 + (i / totalFrames) * 40;
+        setProgress(pct, `Extracting frame ${i + 1}/${totalFrames}...`);
+      }
+    }
+
+    URL.revokeObjectURL(url);
+    log(`Extracted ${frames.length} frames`, 'ok');
+
+    // Steps 2-9: Analyze each frame
+    setProgress(50, 'Analyzing frames...');
+    log('Running photometric analysis on each frame...', 'info');
+
+    const results = [];
+    for (let i = 0; i < frames.length; i++) {
+      const r = analyzeFrame(frames[i].imageData, frames[i].time, i, width, height);
+      if (r) results.push(r);
+
+      if (i % 10 === 0) {
+        const pct = 50 + (i / frames.length) * 30;
+        setProgress(pct, `Analyzing frame ${i + 1}/${frames.length}...`);
+        // Yield to UI
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+
+    log(`Analyzed ${results.length} frames with detected source`, 'ok');
+
+    if (results.length < 5) {
+      log('Too few frames with detected source. Try a different video or adjust viewing angle.', 'err');
+      setProgress(100, 'Analysis failed -- insufficient detections');
+      return;
+    }
+
+    // Step 10: Signal structure analysis
+    setProgress(85, 'Computing signal structure...');
+    log('Running temporal signal analysis...', 'info');
+
+    const signalAnalysis = analyzeSignalStructure(results);
+    log(`Runs test Z = ${signalAnalysis.runsZ.toFixed(2)}`, signalAnalysis.runsZ < -2 ? 'ok' : 'info');
+
+    // Collect metadata
+    const metadata = {
+      observer: name,
+      email: document.getElementById('meta-email').value.trim(),
+      date: date,
+      time: document.getElementById('meta-time').value,
+      location: location,
+      country: country,
+      lat: document.getElementById('meta-lat').value,
+      lon: document.getElementById('meta-lon').value,
+      device: document.getElementById('meta-device').value.trim(),
+      distance: document.getElementById('meta-distance').value,
+      notes: document.getElementById('meta-notes').value.trim(),
+      filename: videoFile.name,
+      filesize_mb: (videoFile.size / (1024 * 1024)).toFixed(1),
+      video_width: width,
+      video_height: height,
+      video_duration_s: duration.toFixed(1),
+      analysis_fps: fps,
+      frames_analyzed: frames.length,
+      frames_with_detection: results.length,
+    };
+
+    analysisResults = {
+      metadata,
+      perFrame: results,
+      signal: signalAnalysis,
+    };
+
+    // Sonification
+    if (doSonify && results.length >= 10) {
+      setProgress(90, 'Generating sonification...');
+      log('Mapping photometric data to sound...', 'info');
+      await generateSonification(results);
+      log('Sonification complete', 'ok');
+    }
+
+    setProgress(95, 'Rendering results...');
+    log('Building photometric report...', 'info');
+
+    renderResults(analysisResults);
+
+    setProgress(100, 'Analysis complete');
+    log('COPP analysis complete!', 'ok');
+
+    document.getElementById('step3').classList.add('complete');
+    document.getElementById('step3').classList.remove('active');
+    document.getElementById('results-section').style.display = 'block';
+
+  } catch (err) {
+    log('Error: ' + err.message, 'err');
+    console.error(err);
+    setProgress(100, 'Analysis failed');
+  }
+}
+
+// --- FRAME ANALYSIS (Steps 2-9) ---
+function analyzeFrame(imageData, time, frameIdx, width, height) {
+  const data = imageData.data; // RGBA
+  const npx = width * height;
+
+  // Step 2: Compute background median brightness
+  // Sample grid of pixels for speed
+  let bgSamples = [];
+  const sampleStep = Math.max(1, Math.floor(Math.sqrt(npx / 1000)));
+  for (let y = 0; y < height; y += sampleStep) {
+    for (let x = 0; x < width; x += sampleStep) {
+      const idx = (y * width + x) * 4;
+      bgSamples.push(data[idx] + data[idx + 1] + data[idx + 2]);
+    }
+  }
+  bgSamples.sort((a, b) => a - b);
+  const bgMedian = bgSamples[Math.floor(bgSamples.length / 2)];
+
+  // Step 3: Threshold -- pixels brighter than median + 40
+  const threshold = bgMedian + 40;
+
+  // Step 4-5: Find bright pixels and cluster
+  let brightPixels = [];
+  let maxBrightness = 0;
+  let totalBrightness = 0;
+  let sumX = 0, sumY = 0;
+  let minX = width, maxX = 0, minY = height, maxY = 0;
+  let satCount = 0;
+
+  // Accumulate R, G, B for spectral analysis
+  let rSum = 0, gSum = 0, bSum = 0;
+  let coreCount = 0;
+  let haloR = 0, haloG = 0, haloB = 0, haloCount = 0;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+      const brightness = r + g + b;
+
+      if (brightness > threshold) {
+        brightPixels.push({ x, y, r, g, b, brightness });
+        totalBrightness += brightness;
+        sumX += x;
+        sumY += y;
+        if (brightness > maxBrightness) maxBrightness = brightness;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+
+        // Check saturation (any channel > 250)
+        const isSat = r > 250 || g > 250 || b > 250;
+        if (isSat) satCount++;
+
+        // Step 8: Spectral -- separate core and halo
+        if (!isSat) {
+          if (brightness > threshold + 30) {
+            // Core pixel
+            rSum += r; gSum += g; bSum += b;
+            coreCount++;
+          } else if (brightness > bgMedian + 15 && brightness < bgMedian + 200) {
+            // Halo pixel
+            haloR += r; haloG += g; haloB += b;
+            haloCount++;
+          }
+        }
+      }
+    }
+  }
+
+  if (brightPixels.length < 3) return null; // no significant source
+
+  const size = brightPixels.length;
+  const cx = sumX / size;
+  const cy = sumY / size;
+  const satFrac = satCount / size;
+
+  // Adaptive spectral: core or halo
+  let rCh, gCh, bCh, spectralSource;
+  if (satFrac < 0.5 && coreCount > 0) {
+    rCh = rSum / coreCount;
+    gCh = gSum / coreCount;
+    bCh = bSum / coreCount;
+    spectralSource = 'core';
+  } else if (haloCount > 3) {
+    rCh = haloR / haloCount;
+    gCh = haloG / haloCount;
+    bCh = haloB / haloCount;
+    spectralSource = 'halo';
+  } else if (coreCount > 0) {
+    rCh = rSum / coreCount;
+    gCh = gSum / coreCount;
+    bCh = bSum / coreCount;
+    spectralSource = 'core';
+  } else {
+    rCh = 128; gCh = 128; bCh = 128;
+    spectralSource = 'none';
+  }
+
+  return {
+    frame: frameIdx,
+    time_s: parseFloat(time.toFixed(3)),
+    cx: parseFloat(cx.toFixed(1)),
+    cy: parseFloat(cy.toFixed(1)),
+    size_px: size,
+    extent_x: maxX - minX,
+    extent_y: maxY - minY,
+    peak_intensity: maxBrightness,
+    integrated_intensity: totalBrightness,
+    saturation_fraction: parseFloat(satFrac.toFixed(3)),
+    r_channel: parseFloat(rCh.toFixed(1)),
+    g_channel: parseFloat(gCh.toFixed(1)),
+    b_channel: parseFloat(bCh.toFixed(1)),
+    blue_excess: parseFloat((bCh - rCh).toFixed(1)),
+    normalized_blue_excess: parseFloat(((bCh - rCh) / (rCh + gCh + bCh + 0.001)).toFixed(4)),
+    spectral_source: spectralSource,
+  };
+}
+
+// --- SIGNAL STRUCTURE ANALYSIS ---
+function analyzeSignalStructure(results) {
+  const peaks = results.map(r => r.peak_intensity);
+  const sizes = results.map(r => r.size_px);
+  const be = results.map(r => r.blue_excess);
+  const n = peaks.length;
+
+  // Median
+  const sorted = [...peaks].sort((a, b) => a - b);
+  const median = sorted[Math.floor(n / 2)];
+
+  // Mean and std
+  const mean = peaks.reduce((a, b) => a + b, 0) / n;
+  const std = Math.sqrt(peaks.reduce((s, v) => s + (v - mean) ** 2, 0) / n);
+
+  // Runs test
+  const binary = peaks.map(p => p > median ? 1 : 0);
+  let runs = 1;
+  for (let i = 1; i < n; i++) {
+    if (binary[i] !== binary[i - 1]) runs++;
+  }
+  const n1 = binary.filter(b => b === 1).length;
+  const n0 = n - n1;
+  const expectedRuns = 1 + (2 * n1 * n0) / n;
+  const stdRuns = Math.sqrt((2 * n1 * n0 * (2 * n1 * n0 - n)) / (n * n * (n - 1)));
+  const runsZ = stdRuns > 0 ? (runs - expectedRuns) / stdRuns : 0;
+
+  // Correlation: size vs intensity
+  const sizeIntCorr = pearsonCorr(peaks, sizes);
+
+  // Correlation: blue excess vs intensity
+  const beIntCorr = pearsonCorr(peaks, be);
+
+  // Burst episodes
+  const highThresh = mean + 0.5 * std;
+  let bursts = 0;
+  let inBurst = false;
+  let burstDurations = [];
+  let burstStart = 0;
+  for (let i = 0; i < n; i++) {
+    if (peaks[i] > highThresh && !inBurst) {
+      inBurst = true;
+      burstStart = i;
+    } else if (peaks[i] <= highThresh && inBurst) {
+      inBurst = false;
+      bursts++;
+      burstDurations.push(i - burstStart);
+    }
+  }
+  if (inBurst) { bursts++; burstDurations.push(n - burstStart); }
+
+  // Intensity variation
+  const intMin = Math.min(...peaks);
+  const intMax = Math.max(...peaks);
+  const intVariation = intMin > 0 ? intMax / intMin : intMax;
+
+  // Position drift
+  const cx = results.map(r => r.cx);
+  const cy = results.map(r => r.cy);
+  const driftX = Math.max(...cx) - Math.min(...cx);
+  const driftY = Math.max(...cy) - Math.min(...cy);
+
+  // Position jumps (>30px frame-to-frame)
+  let jumps = 0;
+  for (let i = 1; i < n; i++) {
+    const dx = cx[i] - cx[i - 1];
+    const dy = cy[i] - cy[i - 1];
+    if (Math.sqrt(dx * dx + dy * dy) > 30) jumps++;
+  }
+
+  // Mean saturation
+  const meanSat = results.reduce((s, r) => s + r.saturation_fraction, 0) / n;
+
+  // Shannon entropy (bigram)
+  let bigrams = {};
+  for (let i = 0; i < n - 1; i++) {
+    const key = `${binary[i]}${binary[i + 1]}`;
+    bigrams[key] = (bigrams[key] || 0) + 1;
+  }
+  const totalBg = Object.values(bigrams).reduce((a, b) => a + b, 0);
+  let H2 = 0;
+  for (const c of Object.values(bigrams)) {
+    const p = c / totalBg;
+    H2 -= p * Math.log2(p);
+  }
+
+  // Classification
+  const meanBE = be.reduce((a, b) => a + b, 0) / n;
+  const spectralClass = meanBE > 0 ? 'cool/ionized (blue excess)' : 'warm/thermal (red excess)';
+  const kinematicClass = driftX > 20 || driftY > 20 ? 'mobile' : 'stationary';
+
+  return {
+    runsZ: runsZ,
+    runsP: runsZ < -2 ? '<0.001' : runsZ < -1.96 ? '<0.05' : 'ns',
+    runsVerdict: runsZ < -2 ? 'CLUSTERED (non-random)' : runsZ > 2 ? 'ALTERNATING (non-random)' : 'INCONCLUSIVE',
+    sizeIntCorr: sizeIntCorr,
+    beIntCorr: beIntCorr,
+    bursts: bursts,
+    meanBurstDuration: burstDurations.length > 0 ? (burstDurations.reduce((a, b) => a + b, 0) / burstDurations.length).toFixed(1) : 'N/A',
+    intVariation: intVariation,
+    driftX: driftX.toFixed(0),
+    driftY: driftY.toFixed(0),
+    positionJumps: jumps,
+    meanSaturation: meanSat,
+    shannonH2: H2,
+    spectralClass: spectralClass,
+    kinematicClass: kinematicClass,
+    meanR: (results.reduce((s, r) => s + r.r_channel, 0) / n).toFixed(1),
+    meanG: (results.reduce((s, r) => s + r.g_channel, 0) / n).toFixed(1),
+    meanB: (results.reduce((s, r) => s + r.b_channel, 0) / n).toFixed(1),
+    meanBE: meanBE.toFixed(1),
+  };
+}
+
+function pearsonCorr(x, y) {
+  const n = x.length;
+  const mx = x.reduce((a, b) => a + b, 0) / n;
+  const my = y.reduce((a, b) => a + b, 0) / n;
+  let num = 0, dx2 = 0, dy2 = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = x[i] - mx, dy = y[i] - my;
+    num += dx * dy;
+    dx2 += dx * dx;
+    dy2 += dy * dy;
+  }
+  const denom = Math.sqrt(dx2 * dy2);
+  return denom > 0 ? parseFloat((num / denom).toFixed(3)) : 0;
+}
+
+// --- SONIFICATION ---
+async function generateSonification(results) {
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const sampleRate = audioContext.sampleRate;
+  const frameDur = 0.15; // seconds per data frame
+  const totalSamples = Math.ceil(results.length * frameDur * sampleRate);
+
+  const buffer = audioContext.createBuffer(1, totalSamples, sampleRate);
+  const channelData = buffer.getChannelData(0);
+
+  // Normalize
+  const peaks = results.map(r => r.peak_intensity);
+  const sizes = results.map(r => r.size_px);
+  const bes = results.map(r => r.blue_excess);
+  const pMin = Math.min(...peaks), pMax = Math.max(...peaks);
+  const sMin = Math.min(...sizes), sMax = Math.max(...sizes);
+  const bMin = Math.min(...bes), bMax = Math.max(...bes);
+  const pRange = pMax - pMin || 1;
+  const sRange = sMax - sMin || 1;
+  const bRange = bMax - bMin || 1;
+
+  // Pentatonic scale frequencies (A3 base)
+  const pentaRatios = [1, 9/8, 5/4, 3/2, 5/3, 2, 9/4, 5/2, 3, 10/3];
+  const baseFreq = 220;
+
+  for (let i = 0; i < results.length; i++) {
+    const pNorm = (peaks[i] - pMin) / pRange;
+    const sNorm = (sizes[i] - sMin) / sRange;
+    const bNorm = (bes[i] - bMin) / bRange;
+
+    const freqIdx = pNorm * (pentaRatios.length - 1);
+    const lo = Math.floor(freqIdx);
+    const hi = Math.min(lo + 1, pentaRatios.length - 1);
+    const frac = freqIdx - lo;
+    const freq = baseFreq * (pentaRatios[lo] * (1 - frac) + pentaRatios[hi] * frac);
+
+    const startSample = Math.floor(i * frameDur * sampleRate);
+    const endSample = Math.min(Math.floor((i + 1) * frameDur * sampleRate), totalSamples);
+    const nSamples = endSample - startSample;
+
+    const volume = 0.15 + 0.85 * sNorm;
+    const harmStr = 1.0 - bNorm;
+
+    for (let s = 0; s < nSamples; s++) {
+      const t = s / sampleRate;
+      let val = Math.sin(2 * Math.PI * freq * t);
+      val += 0.3 * harmStr * Math.sin(2 * Math.PI * freq * 2 * t);
+      val += 0.15 * harmStr * Math.sin(2 * Math.PI * freq * 3 * t);
+
+      // Envelope
+      const attack = Math.min(200, nSamples / 4);
+      const release = Math.min(200, nSamples / 4);
+      let env = 1;
+      if (s < attack) env = s / attack;
+      if (s > nSamples - release) env = (nSamples - s) / release;
+
+      channelData[startSample + s] += val * volume * env * 0.3;
+    }
+  }
+
+  // Drone
+  for (let s = 0; s < totalSamples; s++) {
+    const t = s / sampleRate;
+    channelData[s] += 0.05 * Math.sin(2 * Math.PI * (baseFreq / 2) * t);
+  }
+
+  // Normalize
+  let maxVal = 0;
+  for (let s = 0; s < totalSamples; s++) {
+    if (Math.abs(channelData[s]) > maxVal) maxVal = Math.abs(channelData[s]);
+  }
+  if (maxVal > 0) {
+    for (let s = 0; s < totalSamples; s++) {
+      channelData[s] = channelData[s] / maxVal * 0.85;
+    }
+  }
+
+  audioBuffer = buffer;
+  document.getElementById('sonification-card').style.display = 'block';
+  document.getElementById('dl-audio-btn').style.display = '';
+  document.getElementById('audio-duration').textContent = (results.length * frameDur).toFixed(1);
+}
+
+function toggleAudio() {
+  if (!audioBuffer || !audioContext) return;
+  if (audioContext.state === 'suspended') audioContext.resume();
+
+  if (isPlaying) {
+    if (audioSource) audioSource.stop();
+    isPlaying = false;
+    document.getElementById('play-btn').innerHTML = '&#9654;';
+  } else {
+    audioSource = audioContext.createBufferSource();
+    audioSource.buffer = audioBuffer;
+    audioSource.connect(audioContext.destination);
+    audioSource.onended = () => {
+      isPlaying = false;
+      document.getElementById('play-btn').innerHTML = '&#9654;';
+    };
+    audioSource.start();
+    isPlaying = true;
+    document.getElementById('play-btn').innerHTML = '&#9632;';
+  }
+}
+
+// --- RENDER RESULTS ---
+function renderResults(data) {
+  const r = data.perFrame;
+  const s = data.signal;
+  const m = data.metadata;
+
+  // Metrics grid
+  const metricsEl = document.getElementById('metrics-grid');
+  metricsEl.innerHTML = `
+    <div class="metric"><div class="label">Frames Analyzed</div><div class="value">${r.length}</div></div>
+    <div class="metric"><div class="label">Duration</div><div class="value">${m.video_duration_s}<span class="unit">s</span></div></div>
+    <div class="metric highlight"><div class="label">Mean RGB</div><div class="value">${s.meanR}, ${s.meanG}, ${s.meanB}</div></div>
+    <div class="metric ${parseFloat(s.meanBE) > 0 ? 'highlight' : 'warn'}"><div class="label">Mean Blue Excess</div><div class="value">${s.meanBE}<span class="unit">DN</span></div></div>
+    <div class="metric"><div class="label">Mean Saturation</div><div class="value">${(s.meanSaturation * 100).toFixed(0)}<span class="unit">%</span></div></div>
+    <div class="metric"><div class="label">Intensity Variation</div><div class="value">${s.intVariation.toFixed(1)}<span class="unit">x</span></div></div>
+  `;
+
+  // Signal metrics
+  const sigEl = document.getElementById('signal-metrics');
+  const zClass = s.runsZ < -2 ? 'good' : s.runsZ > 2 ? 'warn' : '';
+  sigEl.innerHTML = `
+    <div class="metric ${zClass}"><div class="label">Runs Test Z</div><div class="value">${s.runsZ.toFixed(2)}</div></div>
+    <div class="metric"><div class="label">Verdict</div><div class="value" style="font-size:0.8em">${s.runsVerdict}</div></div>
+    <div class="metric"><div class="label">Size-Intensity r</div><div class="value">${s.sizeIntCorr}</div></div>
+    <div class="metric"><div class="label">Bright Episodes</div><div class="value">${s.bursts}</div></div>
+    <div class="metric"><div class="label">Position Drift</div><div class="value">${s.driftX} x ${s.driftY}<span class="unit">px</span></div></div>
+    <div class="metric"><div class="label">Position Jumps</div><div class="value">${s.positionJumps}</div></div>
+    <div class="metric"><div class="label">Shannon Entropy</div><div class="value">${s.shannonH2.toFixed(3)}<span class="unit">bits</span></div></div>
+    <div class="metric"><div class="label">Spectral Class</div><div class="value" style="font-size:0.7em">${s.spectralClass}</div></div>
+  `;
+
+  // Classification
+  const classEl = document.getElementById('classification-text');
+  classEl.innerHTML = `
+    <strong>Spectral classification (indicative):</strong> ${s.spectralClass}<br>
+    <strong>Kinematic classification:</strong> ${s.kinematicClass}<br>
+    <strong>Temporal structure:</strong> ${s.runsVerdict} (Z = ${s.runsZ.toFixed(2)}, p ${s.runsP})<br>
+    <strong>Size-intensity correlation:</strong> r = ${s.sizeIntCorr} 
+    ${s.sizeIntCorr > 0.5 ? '(strong positive -- source expands when brightening, consistent with emitting volume)' :
+      s.sizeIntCorr > 0.2 ? '(moderate positive correlation)' : '(weak or no correlation)'}<br><br>
+    <em style="color:var(--text2);">Note: Spectral classifications are derived from uncalibrated consumer RGB data and are indicative 
+    rather than definitive. See COPP methodology paper for calibration limitations and caveats.</em>
+  `;
+
+  // Charts
+  drawChart('chart-intensity', r.map(f => f.time_s), r.map(f => f.peak_intensity), '#00ccff', 'Peak Intensity (DN)');
+  drawChart('chart-spectral', r.map(f => f.time_s), null, null, null, [
+    { data: r.map(f => f.r_channel), color: '#ff4444', label: 'R' },
+    { data: r.map(f => f.g_channel), color: '#44ff88', label: 'G' },
+    { data: r.map(f => f.b_channel), color: '#4488ff', label: 'B' },
+  ]);
+  drawChart('chart-size', r.map(f => f.time_s), r.map(f => f.size_px), '#ffcc00', 'Size (pixels)');
+}
+
+function drawChart(canvasId, xData, yData, color, label, multiSeries) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const w = rect.width, h = rect.height;
+  const pad = { top: 20, right: 20, bottom: 30, left: 55 };
+  const pw = w - pad.left - pad.right;
+  const ph = h - pad.top - pad.bottom;
+
+  ctx.fillStyle = '#0a0a14';
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = '#1a1a3a';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (ph * i) / 4;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+  }
+
+  const series = multiSeries || [{ data: yData, color, label }];
+  const allY = series.flatMap(s => s.data);
+  const yMin = Math.min(...allY);
+  const yMax = Math.max(...allY);
+  const yRange = yMax - yMin || 1;
+  const xMin = Math.min(...xData);
+  const xMax = Math.max(...xData);
+  const xRange = xMax - xMin || 1;
+
+  for (const s of series) {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < xData.length; i++) {
+      const x = pad.left + ((xData[i] - xMin) / xRange) * pw;
+      const y = pad.top + ph - ((s.data[i] - yMin) / yRange) * ph;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle = '#666688';
+  ctx.font = '10px JetBrains Mono';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${xMin.toFixed(1)}s`, pad.left, h - 5);
+  ctx.fillText(`${xMax.toFixed(1)}s`, w - pad.right, h - 5);
+  ctx.textAlign = 'right';
+  ctx.fillText(yMax.toFixed(0), pad.left - 6, pad.top + 10);
+  ctx.fillText(yMin.toFixed(0), pad.left - 6, h - pad.bottom);
+
+  // Legend
+  if (multiSeries) {
+    let lx = pad.left + 10;
+    ctx.font = '10px JetBrains Mono';
+    for (const s of series) {
+      ctx.fillStyle = s.color;
+      ctx.fillRect(lx, 6, 12, 3);
+      ctx.fillText(s.label, lx + 18, 12);
+      lx += 40;
+    }
+  }
+}
+
+// --- EXPORT ---
+function downloadCSV() {
+  if (!analysisResults) return;
+  const r = analysisResults.perFrame;
+  const headers = Object.keys(r[0]);
+  let csv = headers.join(',') + '\n';
+  for (const row of r) {
+    csv += headers.map(h => row[h]).join(',') + '\n';
+  }
+  downloadBlob(csv, 'copp_data.csv', 'text/csv');
+}
+
+function downloadReport() {
+  if (!analysisResults) return;
+  const json = JSON.stringify(analysisResults, null, 2);
+  downloadBlob(json, 'copp_report.json', 'application/json');
+}
+
+function downloadAudio() {
+  if (!audioBuffer) return;
+  const wav = audioBufferToWav(audioBuffer);
+  downloadBlob(wav, 'orb_sonification.wav', 'audio/wav');
+}
+
+function audioBufferToWav(buffer) {
+  const numChannels = 1;
+  const sampleRate = buffer.sampleRate;
+  const format = 1; // PCM
+  const bitDepth = 16;
+  const channelData = buffer.getChannelData(0);
+  const dataLength = channelData.length * 2;
+  const headerLength = 44;
+  const totalLength = headerLength + dataLength;
+  const arrayBuffer = new ArrayBuffer(totalLength);
+  const view = new DataView(arrayBuffer);
+
+  // WAV header
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, totalLength - 8, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, format, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * bitDepth / 8, true);
+  view.setUint16(32, numChannels * bitDepth / 8, true);
+  view.setUint16(34, bitDepth, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, dataLength, true);
+
+  let offset = 44;
+  for (let i = 0; i < channelData.length; i++) {
+    const sample = Math.max(-1, Math.min(1, channelData[i]));
+    view.setInt16(offset, sample * 32767, true);
+    offset += 2;
+  }
+
+  return arrayBuffer;
+}
+
+function writeString(view, offset, string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
+
+function downloadBlob(data, filename, type) {
+  const blob = data instanceof ArrayBuffer ? new Blob([data], { type }) : new Blob([data], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
