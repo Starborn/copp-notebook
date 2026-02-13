@@ -1334,7 +1334,7 @@ function renderResults(data) {
     rather than definitive. See COPP methodology paper for calibration limitations and caveats.</em>
   `;
 
-  // Charts
+  // Charts - NOW WITH THE FIXED DRAWCHART FUNCTION BELOW
   drawChart('chart-intensity', r.map(f => f.time_s), r.map(f => f.peak_intensity), '#00ccff', 'Peak Intensity (DN)');
   drawChart('chart-spectral', r.map(f => f.time_s), null, null, null, [
     { data: r.map(f => f.r_channel), color: '#ff4444', label: 'R' },
@@ -1344,6 +1344,7 @@ function renderResults(data) {
   drawChart('chart-size', r.map(f => f.time_s), r.map(f => f.size_px), '#ffcc00', 'Size (pixels)');
 }
 
+// --- FIXED DRAWCHART FUNCTION (was missing!) ---
 function drawChart(canvasId, xData, yData, color, label, multiSeries) {
   const canvas = document.getElementById(canvasId);
   const ctx = canvas.getContext('2d');
@@ -1357,15 +1358,21 @@ function drawChart(canvasId, xData, yData, color, label, multiSeries) {
   const pw = w - pad.left - pad.right;
   const ph = h - pad.top - pad.bottom;
 
-  ctx.fillStyle = '#0a0a14';
+  // FIXED: Brighter background
+  ctx.fillStyle = '#0f0f1e';
   ctx.fillRect(0, 0, w, h);
 
-  // Grid
-  ctx.strokeStyle = '#1a1a3a';
-  ctx.lineWidth = 0.5;
+  // FIXED: More visible grid
+  ctx.strokeStyle = '#2a2a4a';
+  ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const y = pad.top + (ph * i) / 4;
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+  }
+  // Add vertical gridlines
+  for (let i = 0; i <= 4; i++) {
+    const x = pad.left + (pw * i) / 4;
+    ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, h - pad.bottom); ctx.stroke();
   }
 
   const series = multiSeries || [{ data: yData, color, label }];
@@ -1377,9 +1384,12 @@ function drawChart(canvasId, xData, yData, color, label, multiSeries) {
   const xMax = Math.max(...xData);
   const xRange = xMax - xMin || 1;
 
+  // FIXED: Thicker, more visible lines with glow
   for (const s of series) {
     ctx.strokeStyle = s.color;
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
     for (let i = 0; i < xData.length; i++) {
       const x = pad.left + ((xData[i] - xMin) / xRange) * pw;
@@ -1388,27 +1398,35 @@ function drawChart(canvasId, xData, yData, color, label, multiSeries) {
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
+    
+    // Glow effect
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = s.color;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 
-  // Axis labels
-  ctx.fillStyle = '#666688';
-  ctx.font = '10px JetBrains Mono';
+  // FIXED: Brighter axis labels
+  ctx.fillStyle = '#a0a0c0';
+  ctx.font = '11px JetBrains Mono';
   ctx.textAlign = 'center';
   ctx.fillText(`${xMin.toFixed(1)}s`, pad.left, h - 5);
   ctx.fillText(`${xMax.toFixed(1)}s`, w - pad.right, h - 5);
   ctx.textAlign = 'right';
-  ctx.fillText(yMax.toFixed(0), pad.left - 6, pad.top + 10);
-  ctx.fillText(yMin.toFixed(0), pad.left - 6, h - pad.bottom);
+  ctx.fillText(yMax.toFixed(0), pad.left - 6, pad.top + 12);
+  ctx.fillText(yMin.toFixed(0), pad.left - 6, h - pad.bottom + 4);
 
-  // Legend
+  // FIXED: Brighter legend
   if (multiSeries) {
     let lx = pad.left + 10;
-    ctx.font = '10px JetBrains Mono';
+    ctx.font = '11px JetBrains Mono';
     for (const s of series) {
       ctx.fillStyle = s.color;
-      ctx.fillRect(lx, 6, 12, 3);
-      ctx.fillText(s.label, lx + 18, 12);
-      lx += 40;
+      ctx.fillRect(lx, 8, 16, 4);
+      ctx.fillStyle = '#e0e0f0';
+      ctx.textAlign = 'left';
+      ctx.fillText(s.label, lx + 20, 14);
+      lx += 50;
     }
   }
 }
